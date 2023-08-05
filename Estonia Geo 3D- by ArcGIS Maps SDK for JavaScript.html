@@ -1,0 +1,364 @@
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
+    <title>
+      Search widget with custom source | Sample | ArcGIS Maps SDK for JavaScript
+      4.27
+    </title>
+
+    <style>
+      html,
+      body,
+      #viewDiv {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+      }
+    </style>
+
+    <link
+      rel="stylesheet"
+      href="https://js.arcgis.com/4.27/esri/themes/light/main.css"
+    />
+    <script src="https://js.arcgis.com/4.27/"></script>
+
+    <script>
+      require([
+        "esri/Map",
+        "esri/Basemap",
+        "esri/widgets/BasemapGallery",
+        "esri/views/SceneView",
+        "esri/WebScene",
+        "esri/Graphic",
+        "esri/request",
+        "esri/views/MapView",
+        "esri/widgets/Search",
+        "esri/widgets/Search/SearchSource",
+        "esri/geometry/geometryEngine",
+        "esri/geometry/Point",
+        "esri/widgets/Popup",
+        "esri/widgets/Expand",
+        "esri/widgets/LayerList",
+        "esri/layers/GroupLayer",
+        "esri/widgets/Legend"
+      ], (
+        Map,
+        Basemap,
+        BasemapGallery,
+        SceneView,
+        WebScene,
+        Graphic,
+        esriRequest,
+        MapView,
+        Search,
+        SearchSource,
+        geometryEngine,
+        Point,
+        Popup,
+        Expand,
+        LayerList,
+        GroupLayer,
+        Legend
+      ) => {
+        const scene = new WebScene({
+          portalItem: {
+            // autocasts as new PortalItem()
+            id: "f752df49c764436eb5d102f0e68079ef"
+          }
+        });
+
+        const view = new SceneView({
+          map: scene,
+          container: "viewDiv",
+          popup: new Popup({
+            dockEnabled: true,
+            dockOptions: {
+              // Disables the dock button from the popup
+              buttonEnabled: false,
+              // Ignore the default sizes that trigger responsive docking
+              breakpoint: false
+            }
+          })
+        });
+
+        view.popup.viewModel.includeDefaultActions = false;
+        
+///////////////////////////////////////////////////////////////
+        // in this case the portalItem has to be a webmap
+        const basemap1 = new Basemap({
+          portalItem: {
+            id: "be99602fc02d448eb859a0b426c0d5b6"
+          }
+        });
+
+        const basemap2 = new Basemap({
+          portalItem: {
+            id: "b6517d264b8f467fa5b14c382dfdf87a"
+          }
+        });
+
+        const basemap3 = new Basemap({
+          portalItem: {
+            id: "c5773442e91c48c392f28af6600169d0"
+          }
+        });
+
+        const basemap4 = new Basemap({
+          portalItem: {
+            id: "1bc7e98137fe44129dd6653bef1920d0"
+          }
+        });
+
+        const basemap5 = new Basemap({
+          portalItem: {
+            id: "287be80ff31d4c8babc48b2f959214f5"
+          }
+        });
+
+        const basemap6 = new Basemap({
+          portalItem: {
+            id: "4ee7ecad357844bba5b95001de39f1e3"
+          }
+        });
+
+        const basemap7 = new Basemap({
+          portalItem: {
+            id: "e5c6a086a5ae4d1991d4ca35733fe0ed"
+          }
+        });
+
+        const basemapGallery = new BasemapGallery({
+          view: view,
+          source: [
+            basemap1,
+            basemap2,
+            basemap3,
+            basemap4,
+            basemap5,
+            basemap6,
+            basemap7
+          ] // autocasts to LocalBasemapsSource
+        });
+
+        const bgExpand = new Expand({
+          view: view,
+          content: basemapGallery
+        });
+
+        // Add the expand instance to the ui
+
+        view.ui.add(bgExpand, "bottom-right");
+        // Add the widget to the top-right corner of the view
+        // view.ui.add(basemapGallery, {
+        //   position: "top-right"
+        // });
+        
+/////////////////////////////////////////////////////////////////////
+        const url = "http://inaadress.maaamet.ee/inaadress/gazetteer/";
+
+        // const map = new Map({
+        //   portalItem: {
+        //     id: "b6517d264b8f467fa5b14c382dfdf87a"
+        //   }
+        // });
+
+        // const view = new MapView({
+        //   container: "viewDiv",
+        //   map: map,
+        //   center: [2.21, 46.22], // lon, lat
+        //   scale: 3000000
+        // });
+
+        const customSearchSource = new SearchSource({
+          placeholder: "Find address with IN-ADS API",
+          // Provide a getSuggestions method
+          // to provide suggestions to the Search widget
+          getSuggestions: (params) => {
+            const keyword = params.suggestTerm; // 用户输入的关键词
+            const suggestUrl = `${url}?address=${encodeURIComponent(keyword)}`;
+            return esriRequest(suggestUrl, { responseType: "json" }).then(
+              (results) => {
+                // Return Suggestion results to display
+                // in the Search widget
+                return results.data.addresses.map((address) => {
+                  return {
+                    text: address.pikkaadress,
+                    magicKey: address.unik
+                  };
+                });
+              }
+            );
+          },
+
+          //Provide a getResults method to find
+          //results from the suggestions
+          getResults: (params) => {
+            const key = params.suggestResult.text; // 用户输入的关键词
+            const newUrl = `${url}?address=${encodeURIComponent(key)}`;
+            return esriRequest(newUrl, {
+              responseType: "json"
+            }).then((results) => {
+              // Parse the results of your custom search
+
+              const searchResults = results.data.addresses.map((address) => {
+                const graphic = new Graphic({
+                  geometry: new Point({
+                    x: address.viitepunkt_l,
+                    y: address.viitepunkt_b
+                  })
+                });
+                //Optionally,provide an extent for a point result, so the view can zoom to it
+                const buffer = geometryEngine.geodesicBuffer(
+                  graphic.geometry,
+                  30,
+                  "meters"
+                );
+                // Return a Search Result
+                const searchResult = {
+                  extent: buffer.extent,
+                  feature: graphic,
+                  //name: address.pikkaadress,
+                  name: `${address.pikkaadress}\n(ads_oid=${address.ads_oid})`
+                };
+
+                return searchResult;
+              });
+
+              // Return an array of Search Results
+              return searchResults;
+            });
+          }
+        });
+
+        // Create Search widget using custom SearchSource
+        const searchWidget = new Search({
+          view: view,
+          sources: [customSearchSource],
+          includeDefaultSources: false
+        });
+
+        // Add the search widget to the top left corner of the view
+        view.ui.add(searchWidget, {
+          position: "top-right"
+        });
+        
+///////////////////////////////////////////////////////////////////
+
+        const layerList = new LayerList({
+          view: view,
+          // listItemCreatedFunction: function (event) {
+          //   const item = event.item;
+          //   // // displays the legend for each layer list item
+          //   // item.panel = {
+          //   //   content: "legend"
+          //   };}
+          listItemCreatedFunction: defineActions
+        });
+        
+
+          const layer1Name = "Taimkate analüütiline";
+          const layer2Name = "Taimkate realistlik";
+          const layersToRemove = [];
+          // 创建一个GroupLayer
+          const groupLayer = new GroupLayer({
+            title: "Taimkate", // 这是组合图层的名称，可以根据你的需求设
+                    visible: true,
+                    visibilityMode: "exclusive",
+          });
+
+         async function defineActions(event) {
+
+          const item = event.item;
+
+          await item.layer.when();
+          
+          if (item.title === layer1Name || item.title === layer2Name ) {
+            groupLayer.add(item.layer);
+            layersToRemove.push(item.layer);
+          }
+          //if (item.title === "Hooned")
+            item.panel = {
+               content: "legend"};
+            
+            item.actionsSections = [
+              [
+                {
+                  title: "Increase opacity",
+                  className: "esri-icon-up",
+                  id: "increase-opacity"
+                },
+                {
+                  title: "Decrease opacity",
+                  className: "esri-icon-down",
+                  id: "decrease-opacity"
+                }
+              ]
+            ];
+          };
+        
+         layerList.on("trigger-action", (event) => {
+            const layer = event.item.layer;
+
+            // Capture the action id.
+            const id = event.action.id;
+
+            if (id === "increase-opacity") {
+              // if the increase-opacity action is triggered, then
+              // increase the opacity of the GroupLayer by 0.25
+
+              if (layer.opacity < 1) {
+                layer.opacity += 0.25;
+              }
+            } else if (id === "decrease-opacity") {
+              // if the decrease-opacity action is triggered, then
+              // decrease the opacity of the GroupLayer by 0.25
+
+              if (layer.opacity > 0) {
+                layer.opacity -= 0.25;
+              }
+            }
+          });
+
+        const llExpand = new Expand({
+          view: view,
+          content: layerList
+        });
+
+        view.ui.add(llExpand, "bottom-left");
+        
+
+
+
+// 从场景中移除原始图层
+layersToRemove.forEach((layer) => {
+  view.map.remove(layer);
+});
+
+// 将GroupLayer添加到场景中
+  view.map.add(groupLayer);
+
+///////////////////////////////////////////////////////////////
+        const legend = new Legend({
+          view: view
+        });
+
+        const leExpand = new Expand({
+          view: view,
+          content: legend
+        });
+
+        view.ui.add(leExpand, "bottom-left");
+      });
+///////////////////////////////////////////////////////////////
+    </script>
+  </head>
+
+  <body>
+    <div id="viewDiv"></div>
+  </body>
+</html>
